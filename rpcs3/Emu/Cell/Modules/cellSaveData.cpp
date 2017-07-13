@@ -356,6 +356,7 @@ static NEVER_INLINE s32 savedata_op(ppu_thread& ppu, u32 operation, u32 version,
 
 		}
 
+
 		if (funcFixed)
 		{
 			// Fixed Callback
