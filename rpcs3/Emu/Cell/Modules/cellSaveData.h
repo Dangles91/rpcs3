@@ -1,4 +1,7 @@
-#pragma once
+﻿#pragma once
+#include "Emu/System.h"
+#include "Emu/Cell/PPUModule.h"
+#include "Loader/psf.h"
 
 namespace vm { using namespace ps3; }
 
@@ -92,6 +95,15 @@ enum
 	CELL_SAVEDATA_RECREATE_YES             = 2,
 	CELL_SAVEDATA_RECREATE_YES_RESET_OWNER = 3,
 	CELL_SAVEDATA_RECREATE_MASK            = 0xffff,
+
+	//errDialog
+	CELL_SAVEDATA_ERRDIALOG_NONE	 = 0,
+	CELL_SAVEDATA_ERRDIALOG_ALWAYS   = 1,
+	CELL_SAVEDATA_ERRDIALOG_NOREPEAT = 2,
+
+	//option
+	CELL_SAVEDATA_OPTION_NONE       = 0,
+	CELL_SAVEDATA_OPTION_NOCONFIRM  = 1
 };
 
 
@@ -269,6 +281,14 @@ using CellSaveDataStatCallback = void(vm::ptr<CellSaveDataCBResult> cbResult, vm
 using CellSaveDataFileCallback = void(vm::ptr<CellSaveDataCBResult> cbResult, vm::ptr<CellSaveDataFileGet> get, vm::ptr<CellSaveDataFileSet> set);
 using CellSaveDataDoneCallback = void(vm::ptr<CellSaveDataCBResult> cbResult, vm::ptr<CellSaveDataDoneGet> get);
 
+// cellSaveData aliases (only for cellSaveData.cpp)
+using PSetList = vm::ptr<CellSaveDataSetList>;
+using PSetBuf = vm::ptr<CellSaveDataSetBuf>;
+using PFuncFixed = vm::ptr<CellSaveDataFixedCallback>;
+using PFuncList = vm::ptr<CellSaveDataListCallback>;
+using PFuncStat = vm::ptr<CellSaveDataStatCallback>;
+using PFuncFile = vm::ptr<CellSaveDataFileCallback>;
+using PFuncDone = vm::ptr<CellSaveDataDoneCallback>;
 
 // Auxiliary Structs
 struct SaveDataEntry
@@ -293,4 +313,22 @@ public:
 	virtual ~SaveDialogBase();
 
 	virtual s32 ShowSaveDataList(std::vector<SaveDataEntry>& save_entries, s32 focused, bool isSaving, vm::ptr<CellSaveDataListSet> listSet) = 0;
+};
+
+class save_data_manager
+{
+
+public:
+	static void updateParamSFO(CellSaveDataStatSet *statSet, psf::registry *psf, std::string dirName);
+	static u32 processFuncFileCallBack(PFuncFile funcFile, vm::ptr<CellSaveDataFileGet> fileGet, vm::ptr<CellSaveDataFileSet> fileSet,
+		ppu_thread& ppu, psf::registry *psf, vm::ptr<CellSaveDataCBResult> result, std::string dir_path, bool showProgress);
+	static void dumpCellSaveDataStatSet(CellSaveDataStatSet *set);
+	static u32 processCBResult(u32 result, u32 errDialog);
+	static void getSaveDataList(std::vector<SaveDataEntry> *save_entries,std::string base_dir,
+		u32 dir_list_max, vm::ptr<CellSaveDataSetList> setList, vm::ptr<CellSaveDataListGet> listGet);
+	static u32 getSaveDataStats(std::string dirPath, std::string sfoPath, SaveDataEntry *save_entry, PSetBuf setBuf,
+		vm::ptr<CellSaveDataStatGet> statGet);
+	static u32 performFilePreProcessing(CellSaveDataStatSet *statSet, std::string dir_path, SaveDataEntry save_entry);
+	static bool initSaveDataContext();
+	static u32 getListFocusIndex(std::vector<SaveDataEntry> *save_entries, u32 focus_pos, u32 *focusIndex, std::string focusDirName);
 };
