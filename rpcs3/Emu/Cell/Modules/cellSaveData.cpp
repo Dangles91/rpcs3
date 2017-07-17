@@ -394,7 +394,6 @@ static NEVER_INLINE s32 savedata_op(ppu_thread& ppu, u32 operation, u32 version,
 				//TODO: show confirmation dialog
 			}
 
-<<<<<<< HEAD
 			if (operation == SAVEDATA_OP_FIXED_DELETE)
 			{
 				std::string del_dir = fixedSet->dirName.get_ptr();
@@ -459,8 +458,6 @@ static NEVER_INLINE s32 savedata_op(ppu_thread& ppu, u32 operation, u32 version,
 				save_entry.dirName = fixedSet->dirName.get_ptr();
 			}
 
-=======
->>>>>>> 26de9136f1575e5b738c2d71f79e5e2a9c166da4
 		}
 
 		if (selected >= 0)
@@ -652,11 +649,6 @@ static NEVER_INLINE s32 savedata_op(ppu_thread& ppu, u32 operation, u32 version,
 		}
 	}
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> 26de9136f1575e5b738c2d71f79e5e2a9c166da4
 	// Create save directory if necessary
 	if (psf.size() && save_entry.isNew && !fs::create_dir(dir_path))
 	{		
@@ -1048,10 +1040,10 @@ s32 cellSaveDataUserListAutoLoad(ppu_thread& ppu, u32 version, u32 userId, u32 e
 
 s32 cellSaveDataUserFixedDelete(ppu_thread& ppu, u32 userId, PSetList setList, PSetBuf setBuf, PFuncFixed funcFixed, PFuncDone funcDone, u32 container, vm::ptr<void> userdata)
 {
-	cellSaveData.todo("cellSaveDataUserFixedDelete(userId=%d, setList=*0x%x, setBuf=*0x%x, funcFixed=*0x%x, funcDone=*0x%x, container=0x%x, userdata=*0x%x)",
+	cellSaveData.warning("cellSaveDataUserFixedDelete(userId=%d, setList=*0x%x, setBuf=*0x%x, funcFixed=*0x%x, funcDone=*0x%x, container=0x%x, userdata=*0x%x)",
 		userId, setList, setBuf, funcFixed, funcDone, container, userdata);
 
-	return CELL_OK;
+	return savedata_op(ppu, SAVEDATA_OP_FIXED_DELETE,0, vm::null, 1, setList, setBuf, vm::null, funcFixed, vm::null, vm::null, container, 0, userdata,userId, funcDone);
 }
 
 void cellSaveDataEnableOverlay(s32 enable)
