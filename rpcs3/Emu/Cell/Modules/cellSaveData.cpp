@@ -52,6 +52,7 @@ namespace
 		CellSaveDataStatSet  statSet;
 		CellSaveDataFileGet  fileGet;
 		CellSaveDataFileSet  fileSet;
+		CellSaveDataDoneGet doneGet;
 	};
 }
 
@@ -81,6 +82,7 @@ static NEVER_INLINE s32 savedata_op(ppu_thread& ppu, u32 operation, u32 version,
 	vm::ptr<CellSaveDataStatSet>  statSet  = g_savedata_context.ptr(&savedata_context::statSet);
 	vm::ptr<CellSaveDataFileGet>  fileGet  = g_savedata_context.ptr(&savedata_context::fileGet);
 	vm::ptr<CellSaveDataFileSet>  fileSet  = g_savedata_context.ptr(&savedata_context::fileSet);
+	vm::ptr<CellSaveDataDoneGet>  doneGet = g_savedata_context.ptr(&savedata_context::doneGet);
 
 	//TODO: get current user ID
 	// userId(0) = CELL_SYSUTIL_USERID_CURRENT
@@ -387,6 +389,70 @@ static NEVER_INLINE s32 savedata_op(ppu_thread& ppu, u32 operation, u32 version,
 				}
 			}
 
+			if (fixedSet->option == 0)
+			{
+				//TODO: show confirmation dialog
+			}
+
+			if (operation == SAVEDATA_OP_FIXED_DELETE)
+			{
+				std::string del_dir = fixedSet->dirName.get_ptr();
+				std::string del_path = base_dir + del_dir;
+
+				if (fs::exists(del_path) && fs::is_dir(del_path))
+				{
+					// get savedata stats					
+					fs::stat_t dir_info{};
+					if (!fs::stat(del_path, dir_info))
+					{
+						return CELL_SAVEDATA_ERROR_ACCESS_ERROR;
+					}
+
+					strcpy_trunc(doneGet->dirName, del_path);
+					doneGet->hddFreeSizeKB = statGet->hddFreeSizeKB = 40 * 1024 * 1024; // 40 GB
+					doneGet->sizeKB = dir_info.size;
+					doneGet->excResult = 0; // normal return. Other values are for copying, import etc.
+					memset(doneGet->reserved, 0, sizeof(doneGet->reserved));
+
+					// delete the save data
+					try
+					{
+						fs::remove_all(del_path,true);
+					}
+					catch (std::exception)
+					{
+						return CELL_SAVEDATA_ERROR_ACCESS_ERROR;
+					}
+
+					cellSaveData.error("savedata_op(): savedata directory %s deleted", del_path);					
+					funcDone(ppu, result, doneGet);
+						
+					if (result->result == CELL_SAVEDATA_CBRESULT_OK_LAST_NOCONFIRM || result->result == CELL_SAVEDATA_CBRESULT_OK_LAST
+						|| result->result == CELL_SAVEDATA_CBRESULT_OK_NEXT)
+					{
+						if (result->result == CELL_SAVEDATA_CBRESULT_OK_LAST)
+						{
+							//TODO: show dialog indicating completion
+						}
+
+						return CELL_OK;
+					}
+
+					// this shouldn't occur.
+					if (result->result < 0)
+					{
+						//TODO: show dialog indicating an error occured
+					}
+					return CELL_SAVEDATA_ERROR_CBRESULT;
+
+				}
+				else
+				{
+					// data could not be found
+					return CELL_SAVEDATA_ERROR_NODATA;
+				}			
+			}
+
 			if (selected == -1)
 			{
 				save_entry.dirName = fixedSet->dirName.get_ptr();
@@ -582,8 +648,6 @@ static NEVER_INLINE s32 savedata_op(ppu_thread& ppu, u32 operation, u32 version,
 		}
 		}
 	}
-
-
 
 	// Create save directory if necessary
 	if (psf.size() && save_entry.isNew && !fs::create_dir(dir_path))
@@ -891,7 +955,7 @@ s32 cellSaveDataListAutoLoad(ppu_thread& ppu, u32 version, u32 errDialog, PSetLi
 s32 cellSaveDataDelete2(u32 container)
 {
 	cellSaveData.todo("cellSaveDataDelete2(container=0x%x)", container);
-
+	
 	return CELL_CANCEL;
 }
 
@@ -904,10 +968,10 @@ s32 cellSaveDataDelete(u32 container)
 
 s32 cellSaveDataFixedDelete(ppu_thread& ppu, PSetList setList, PSetBuf setBuf, PFuncFixed funcFixed, PFuncDone funcDone, u32 container, vm::ptr<void> userdata)
 {
-	cellSaveData.todo("cellSaveDataFixedDelete(setList=*0x%x, setBuf=*0x%x, funcFixed=*0x%x, funcDone=*0x%x, container=0x%x, userdata=*0x%x)",
+	cellSaveData.warning("cellSaveDataFixedDelete(setList=*0x%x, setBuf=*0x%x, funcFixed=*0x%x, funcDone=*0x%x, container=0x%x, userdata=*0x%x)",
 		setList, setBuf, funcFixed, funcDone, container, userdata);
 
-	return CELL_OK;
+	return savedata_op(ppu, SAVEDATA_OP_FIXED_DELETE, 0, vm::null, 1, setList, setBuf, vm::null, funcFixed, vm::null, vm::null, container, 0, userdata, 0, funcDone);
 }
 
 s32 cellSaveDataUserListSave(ppu_thread& ppu, u32 version, u32 userId, PSetList setList, PSetBuf setBuf, PFuncList funcList, PFuncStat funcStat, PFuncFile funcFile, u32 container, vm::ptr<void> userdata)
